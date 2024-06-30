@@ -94,9 +94,16 @@ func isSorted(head *Node) bool {
 
 func recursiveMergeSort(head *Node) *Node {
 	if head.Next == nil {
+		// single node list is sorted by definiton
 		return head
 	}
 
+	// because of recursion bottoming out at a 1-long-list,
+	// head points to a list of at least 2 elements.
+
+	// Setting rabbit and turtle like this means we split an
+	// odd-length-list (head) into lists of length n (right)
+	// and n+1 (left).
 	rabbit, turtle := head.Next, &head
 
 	for rabbit != nil {
@@ -114,6 +121,9 @@ func recursiveMergeSort(head *Node) *Node {
 
 	var h, t *Node
 
+	// left and right are either equal in length, or right is one
+	// node longer, but the "<" check might take more from one list
+	// than the other. Have to check both for nil.
 	for left != nil && right != nil {
 		var n *Node
 		if left.Data < right.Data {
@@ -130,12 +140,16 @@ func recursiveMergeSort(head *Node) *Node {
 			t.Next = n
 			t = t.Next
 		}
-		t.Next = nil
+		// At the end of this for-loop, t.Next ends up being nil
+		// because of the left/right list splitting.
 	}
 
-	// right list can be 1 more in length than left list
+	// Either left or right are nil. If left == nil,
+	// assigning nil to t.Next is no issue.
 	t.Next = left
 	if right != nil {
+		// but if right is nil, can't assign nil to t.Next,
+		// because left was non-nil.
 		t.Next = right
 	}
 

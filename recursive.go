@@ -132,11 +132,11 @@ func recursiveMergeSort(head *Node) *Node {
 		}
 		t.Next = nil
 	}
-	for left != nil {
-		t.Next = left
-		left = left.Next
+
+	// at most one of left or right is nil at this point
+	t.Next = left
+	for t.Next != nil {
 		t = t.Next
-		t.Next = nil
 	}
 	t.Next = right
 

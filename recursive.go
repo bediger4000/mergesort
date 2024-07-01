@@ -120,6 +120,13 @@ func recursiveMergeSort(head *Node) *Node {
 	right = recursiveMergeSort(right)
 
 	var h, t *Node
+	if left.Data < right.Data {
+		h, t = left, left
+		left = left.Next
+	} else {
+		h, t = right, right
+		right = right.Next
+	}
 
 	// left and right are either equal in length, or right is one
 	// node longer, but the "<" check might take more from one list
@@ -133,13 +140,8 @@ func recursiveMergeSort(head *Node) *Node {
 			n = right
 			right = right.Next
 		}
-		if h == nil {
-			h = n
-			t = n
-		} else {
-			t.Next = n
-			t = t.Next
-		}
+		t.Next = n
+		t = t.Next
 		// At the end of this for-loop, t.Next ends up being nil
 		// because of the left/right list splitting.
 	}

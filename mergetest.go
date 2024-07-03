@@ -21,11 +21,14 @@ type Node struct {
 func main() {
 	useCryptoRand := flag.Bool("c", false, "use cryptographic PRNG")
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
+	countIncrement := flag.Int("i", 200000, "increment of list size")
+	countBegin := flag.Int("b", 1000, "beginning list size")
+	countUntil := flag.Int("u", 8000000, "sort lists up to this size")
 	flag.Parse()
 
 	rand.Seed(time.Now().UnixNano() | int64(os.Getpid()))
 
-	for n := 10000; n < 17000000; n += 200000 {
+	for n := *countBegin; n < *countUntil; n += *countIncrement {
 		var total time.Duration
 		for i := 0; i < 10; i++ {
 			head := randomValueList(n, *useCryptoRand)

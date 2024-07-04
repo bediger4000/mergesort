@@ -21,17 +21,26 @@ type Node struct {
 func main() {
 	useCryptoRand := flag.Bool("c", false, "use cryptographic PRNG")
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
+	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
 	countIncrement := flag.Int("i", 200000, "increment of list size")
 	countBegin := flag.Int("b", 1000, "beginning list size")
-	countUntil := flag.Int("u", 8000000, "sort lists up to this size")
+	countUntil := flag.Int("u", 18000000, "sort lists up to this size")
 	flag.Parse()
 
 	rand.Seed(time.Now().UnixNano() | int64(os.Getpid()))
 
 	for n := *countBegin; n < *countUntil; n += *countIncrement {
 		var total time.Duration
+		var looping time.Duration
+		var head *Node
+		if *reuseList {
+			head = randomValueList(n, *useCryptoRand)
+		}
 		for i := 0; i < 10; i++ {
-			head := randomValueList(n, *useCryptoRand)
+			if !*reuseList {
+				// fresh, new list every iteration
+				head = randomValueList(n, *useCryptoRand)
+			}
 
 			var nl *Node
 			before := time.Now()
@@ -41,28 +50,44 @@ func main() {
 				nl = mergesort(head)
 			}
 			elapsed := time.Since(before)
-
-			if !isSorted(nl) {
-				os.Exit(1)
-			}
 			total += elapsed
 
+			if sz, sorted := isSorted(nl); !sorted {
+				log.Printf("list of size %d not sorted at element %d\n", n, sz)
+				os.Exit(1)
+			} else if sz != n {
+				log.Printf("list of size %d had %d elements after sort\n", n, sz)
+				os.Exit(2)
+			}
+
+			if *reuseList {
+				head = rerandomizeList(nl, *useCryptoRand)
+			}
+			elapsed = time.Since(before)
+			looping += elapsed
 		}
 		total /= 10.0
 		fmt.Printf("%d\t%.04f\n", n, total.Seconds())
+		fmt.Printf("# %d\t%.04f\n", n, looping.Seconds())
 	}
 }
 
-func isSorted(head *Node) bool {
-	if head == nil || head.Next == nil {
-		return true
+func isSorted(head *Node) (int, bool) {
+	if head == nil {
+		return 0, true
 	}
+	if head.Next == nil {
+		return 1, true
+	}
+	var sz int
 	for ; head.Next != nil; head = head.Next {
+		sz++
 		if head.Data > head.Next.Data {
-			return false
+			return sz, false
 		}
 	}
-	return true
+	sz++ // for-loop checks head.Next, count final element on list
+	return sz, true
 }
 
 var maxInt = big.NewInt(math.MaxInt32)
@@ -72,23 +97,34 @@ func randomValueList(n int, useCheapRand bool) *Node {
 	var head *Node
 
 	for i := 0; i < n; i++ {
-		var ri int
-		if useCheapRand {
-			ri = rand.Int()
-		} else {
-			mp, err := crand.Int(crand.Reader, maxInt)
-			if err != nil {
-				log.Fatal(err)
-			}
-			ri = int(mp.Int64())
-		}
 		head = &Node{
-			Data: ri,
+			Data: randomValue(useCheapRand),
 			Next: head,
 		}
 	}
 
 	return head
+}
+
+func rerandomizeList(head *Node, useCheapRand bool) *Node {
+	for node := head; node != nil; node = node.Next {
+		node.Data = randomValue(useCheapRand)
+	}
+	return head
+}
+
+func randomValue(useCheapRand bool) int {
+	var ri int
+	if useCheapRand {
+		ri = rand.Int()
+	} else {
+		mp, err := crand.Int(crand.Reader, maxInt)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ri = int(mp.Int64())
+	}
+	return ri
 }
 
 func mergesort(head *Node) *Node {

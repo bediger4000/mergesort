@@ -10,11 +10,12 @@ import (
 	"math/rand"
 	"os"
 	"time"
+	"unsafe"
 )
 
 // Node is an element of a linked list
 type Node struct {
-	Data int
+	Data uint
 	Next *Node
 }
 
@@ -22,6 +23,7 @@ func main() {
 	useCryptoRand := flag.Bool("c", false, "use cryptographic PRNG")
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
 	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
+	addressOrderedList := flag.Bool("m", false, "create address-ordered list for each sort")
 	countIncrement := flag.Int("i", 200000, "increment of list size")
 	countBegin := flag.Int("b", 1000, "beginning list size")
 	countUntil := flag.Int("u", 18000000, "sort lists up to this size")
@@ -29,17 +31,46 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano() | int64(os.Getpid()))
 
+	hostname, _ := os.Hostname() // not going to fail
+	fmt.Printf("# %s on %s\n", time.Now().Format(time.RFC3339), hostname)
+	fmt.Printf("# Start at %d nodes, end before %d nodes, increment %d\n",
+		*countBegin, *countUntil, *countIncrement)
+	sortType := "iterative"
+	if *useRecursiveSort {
+		sortType = "recursive"
+	}
+	fmt.Printf("# %s sort\n", sortType)
+	listType := "idomatic"
+	if *addressOrderedList {
+		listType = "memory address"
+	}
+	fmt.Printf("# %s list ordering\n", listType)
+	if *reuseList {
+		fmt.Println("# re-random-value and re-use list")
+	}
+	randomType := "math/rand"
+	if *useCryptoRand {
+		randomType = "cryptographic"
+	}
+	fmt.Printf("# %s random numbers as list node values\n", randomType)
+
+	var listCreation func(int, bool) *Node
+	listCreation = randomValueList
+	if *addressOrderedList {
+		listCreation = memoryOrderedList
+	}
+
 	for n := *countBegin; n < *countUntil; n += *countIncrement {
 		var total time.Duration
 		var looping time.Duration
 		var head *Node
 		if *reuseList {
-			head = randomValueList(n, *useCryptoRand)
+			head = listCreation(n, *useCryptoRand)
 		}
 		for i := 0; i < 10; i++ {
 			if !*reuseList {
 				// fresh, new list every iteration
-				head = randomValueList(n, *useCryptoRand)
+				head = listCreation(n, *useCryptoRand)
 			}
 
 			var nl *Node
@@ -106,6 +137,27 @@ func randomValueList(n int, useCheapRand bool) *Node {
 	return head
 }
 
+func memoryOrderedList(n int, useCheapRand bool) *Node {
+
+	head := &Node{}
+	head.Data = uint(uintptr(unsafe.Pointer(head)))
+	tail := head
+
+	// Append new *Node to end of list - this will create
+	// a list that has blocks of nodes in descending address order
+	for i := 1; i < n; i++ {
+		nn := &Node{}
+		nn.Data = uint(uintptr(unsafe.Pointer(nn)))
+		tail.Next = nn
+		tail = tail.Next
+	}
+
+	// sort all nodes by address, so that even blocks of nodes are
+	// ordered by ascending address.
+	head = recursiveMergeSort(head)
+	return rerandomizeList(head, useCheapRand)
+}
+
 func rerandomizeList(head *Node, useCheapRand bool) *Node {
 	for node := head; node != nil; node = node.Next {
 		node.Data = randomValue(useCheapRand)
@@ -113,7 +165,7 @@ func rerandomizeList(head *Node, useCheapRand bool) *Node {
 	return head
 }
 
-func randomValue(useCheapRand bool) int {
+func randomValue(useCheapRand bool) uint {
 	var ri int
 	if useCheapRand {
 		ri = rand.Int()
@@ -124,7 +176,7 @@ func randomValue(useCheapRand bool) int {
 		}
 		ri = int(mp.Int64())
 	}
-	return ri
+	return uint(ri)
 }
 
 func mergesort(head *Node) *Node {
@@ -143,6 +195,10 @@ func mergesort(head *Node) *Node {
 	p := head
 	mergecount := 2 // just to pass the first for-test
 
+	// The final pass over the unsorted linked list merges
+	// two lists each of about half the number of nodes.
+	// mergecount will have value 1 in that case. Don't
+	// need to loop again.
 	for k := 1; mergecount > 1; k *= 2 {
 
 		mergecount = 0

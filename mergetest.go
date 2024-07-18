@@ -279,14 +279,15 @@ func recursiveMergeSort(head *Node) *Node {
 	left := recursiveMergeSort(head)
 	right = recursiveMergeSort(right)
 
-	var h, t *Node
+	// Set h, t variables so that the loop doing the merge
+	// does not have to have a "if h == nil" check every iteration.
+	x := &right
 	if left.Data < right.Data {
-		h, t = left, left
-		left = left.Next
-	} else {
-		h, t = right, right
-		right = right.Next
+		x = &left
 	}
+
+	h, t := *x, *x
+	*x = (*x).Next
 
 	// left and right are either equal in length, or right is one
 	// node longer, but the "<" check might take more from one list

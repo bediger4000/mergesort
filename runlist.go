@@ -18,6 +18,7 @@ type Node struct {
 
 func main() {
 	addressOrderedList := flag.Bool("m", false, "create address-ordered list")
+	addressOrderedListBW := flag.Bool("M", false, "create reverse address-ordered list")
 	randomlyOrderedList := flag.Bool("r", false, "create randomly-memory-ordered list")
 	countIncrement := flag.Int("i", 200000, "increment of list size")
 	countBegin := flag.Int("b", 1000, "beginning list size")
@@ -45,6 +46,9 @@ func main() {
 	case *randomlyOrderedList:
 		listType = "randomly-addressed"
 		listCreation = randomAddressedList
+	case *addressOrderedListBW:
+		listType = "reverse memory address"
+		listCreation = memoryOrderedListBW
 	default:
 		listType = "idomatic"
 		listCreation = randomValueList
@@ -53,6 +57,7 @@ func main() {
 
 	fmt.Println("# list length, mean ET to walk list, overall ET for 10 walks")
 
+	beforeLoop := time.Now()
 	for n := *countBegin; n < *countUntil; n += *countIncrement {
 		var total time.Duration
 		var looping time.Duration
@@ -78,7 +83,7 @@ func main() {
 			looping += elapsed
 		}
 		total /= 10.0
-		fmt.Printf("%d\t%.04f\t%.04f\n", n, total.Seconds(), looping.Seconds())
+		fmt.Printf("%d\t%.04f\t%.04f\t%s\n", n, total.Seconds(), looping.Seconds(), time.Now().Format(time.RFC3339))
 	}
 	fmt.Printf("# end at %s on %s\n", time.Now().Format(time.RFC3339), hostname)
 }
@@ -119,6 +124,22 @@ func memoryOrderedList(n int) *Node {
 	// sort all nodes by address, so that even blocks of nodes are
 	// ordered by ascending address.
 	return recursiveMergeSort(head)
+}
+
+func memoryOrderedListBW(n int) *Node {
+
+	var head *Node
+
+	for i := 0; i < n; i++ {
+		nn := &Node{}
+		nn.Data = uint(uintptr(unsafe.Pointer(nn)))
+		nn.Next = head
+		head = nn
+	}
+
+	// sort all nodes by address, so that even blocks of nodes are
+	// ordered by descending address.
+	return recursiveMergeSortReversed(head)
 }
 
 func recursiveMergeSort(head *Node) *Node {
@@ -164,6 +185,73 @@ func recursiveMergeSort(head *Node) *Node {
 	for left != nil && right != nil {
 		var n *Node
 		if left.Data < right.Data {
+			n = left
+			left = left.Next
+		} else {
+			n = right
+			right = right.Next
+		}
+		t.Next = n
+		t = t.Next
+		// At the end of this for-loop, t.Next ends up being nil
+		// because of the left/right list splitting.
+	}
+
+	// Either left or right are nil. If left == nil,
+	// assigning nil to t.Next is no issue.
+	t.Next = left
+	if right != nil {
+		// but if right is nil, can't assign nil to t.Next,
+		// because left was non-nil.
+		t.Next = right
+	}
+
+	return h
+}
+
+func recursiveMergeSortReversed(head *Node) *Node {
+	if head.Next == nil {
+		// single node list is sorted by definiton
+		return head
+	}
+
+	// because of recursion bottoming out at a 1-long-list,
+	// head points to a list of at least 2 elements.
+
+	// Setting rabbit and turtle like this means we split an
+	// odd-length-list (head) into lists of length n (right)
+	// and n+1 (left).
+	rabbit, turtle := head.Next, &head
+
+	for rabbit != nil {
+		turtle = &(*turtle).Next
+		if rabbit = rabbit.Next; rabbit != nil {
+			rabbit = rabbit.Next
+		}
+	}
+
+	right := *turtle
+	*turtle = nil
+
+	left := recursiveMergeSortReversed(head)
+	right = recursiveMergeSortReversed(right)
+
+	// Set h, t variables so that the loop doing the merge
+	// does not have to have a "if h == nil" check every iteration.
+	x := &right
+	if left.Data > right.Data {
+		x = &left
+	}
+
+	h, t := *x, *x
+	*x = (*x).Next
+
+	// left and right are either equal in length, or right is one
+	// node longer, but the "<" check might take more from one list
+	// than the other. Have to check both for nil.
+	for left != nil && right != nil {
+		var n *Node
+		if left.Data > right.Data {
 			n = left
 			left = left.Next
 		} else {

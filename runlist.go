@@ -85,7 +85,7 @@ func main() {
 		total /= 10.0
 		fmt.Printf("%d\t%.04f\t%.04f\t%s\n", n, total.Seconds(), looping.Seconds(), time.Now().Format(time.RFC3339))
 	}
-	fmt.Printf("# end at %s on %s\n", time.Now().Format(time.RFC3339), hostname)
+	fmt.Printf("# end at %s after %s on %s\n", time.Now().Format(time.RFC3339), time.Since(beforeLoop), hostname)
 }
 
 func randomValueList(n int) *Node {

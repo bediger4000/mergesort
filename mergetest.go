@@ -23,6 +23,7 @@ func main() {
 	useCryptoRand := flag.Bool("c", false, "use cryptographic PRNG")
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
 	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
+	alreadySorted := flag.Bool("s", false, "already sorted list")
 	addressOrderedList := flag.Bool("m", false, "create address-ordered list for each sort")
 	countIncrement := flag.Int("i", 200000, "increment of list size")
 	countBegin := flag.Int("b", 1000, "beginning list size")
@@ -59,6 +60,9 @@ func main() {
 	if *addressOrderedList {
 		listCreation = memoryOrderedList
 	}
+	if *alreadySorted {
+		listCreation = presortedList
+	}
 
 	for n := *countBegin; n < *countUntil; n += *countIncrement {
 		var total time.Duration
@@ -78,7 +82,7 @@ func main() {
 			if *useRecursiveSort {
 				nl = recursiveMergeSort(head)
 			} else {
-				nl = mergesort(head)
+				nl = mergesort2(head)
 			}
 			elapsed := time.Since(before)
 			total += elapsed
@@ -98,9 +102,10 @@ func main() {
 			looping += elapsed
 		}
 		total /= 10.0
-		fmt.Printf("%d\t%.04f\n", n, total.Seconds())
-		fmt.Printf("# %d\t%.04f\n", n, looping.Seconds())
+		fmt.Printf("%d\t%.04f\t%.04f\n", n, total.Seconds(), looping.Seconds())
 	}
+
+	fmt.Printf("# ending at %s on %s\n", time.Now().Format(time.RFC3339), hostname)
 }
 
 func isSorted(head *Node) (int, bool) {
@@ -130,6 +135,20 @@ func randomValueList(n int, useCheapRand bool) *Node {
 	for i := 0; i < n; i++ {
 		head = &Node{
 			Data: randomValue(useCheapRand),
+			Next: head,
+		}
+	}
+
+	return head
+}
+
+func presortedList(n int, _ bool) *Node {
+
+	var head *Node
+
+	for i := 0; i < n; i++ {
+		head = &Node{
+			Data: uint(i),
 			Next: head,
 		}
 	}
@@ -252,6 +271,92 @@ func mergesort(head *Node) *Node {
 	return head
 }
 
+func mergesort2(head *Node) *Node {
+	var hd, tl *Node
+	p := head
+	mergecount := 2 // just to pass the first for-test
+
+	// The final pass over the unsorted linked list merges
+	// two lists each of about half the number of nodes.
+	// mergecount will have value 1 in that case. Don't
+	// need to loop again.
+	for k := 1; mergecount > 1; k *= 2 {
+
+		mergecount = 0
+
+		for p != nil {
+
+			psize := 0
+			q := p
+			for i := 0; q != nil && i < k; i++ {
+				psize++
+				q = q.Next
+			}
+
+			qsize := psize
+
+			for psize > 0 && qsize > 0 && q != nil {
+				if p.Data < q.Data {
+					if hd == nil {
+						hd = p
+						tl = p
+					} else {
+						tl.Next = p
+						tl = p
+					}
+					p = p.Next
+					psize--
+					continue
+				}
+				if hd == nil {
+					hd = q
+					tl = q
+				} else {
+					tl.Next = q
+					tl = q
+				}
+				q = q.Next
+				qsize--
+			}
+
+			for ; psize > 0 && p != nil; psize-- {
+				if hd == nil {
+					hd = p
+					tl = p
+				} else {
+					tl.Next = p
+					tl = p
+				}
+				p = p.Next
+			}
+
+			for ; qsize > 0 && q != nil; qsize-- {
+				if hd == nil {
+					hd = q
+					tl = q
+				} else {
+					tl.Next = q
+					tl = q
+				}
+				q = q.Next
+			}
+
+			p = q
+
+			mergecount++
+		}
+
+		p = hd
+		head = hd
+
+		hd = nil
+		tl.Next = nil
+		tl = nil
+	}
+
+	return head
+}
+
 func recursiveMergeSort(head *Node) *Node {
 	if head.Next == nil {
 		// single node list is sorted by definiton
@@ -293,15 +398,12 @@ func recursiveMergeSort(head *Node) *Node {
 	// node longer, but the "<" check might take more from one list
 	// than the other. Have to check both for nil.
 	for left != nil && right != nil {
-		var n *Node
+		n := &right
 		if left.Data < right.Data {
-			n = left
-			left = left.Next
-		} else {
-			n = right
-			right = right.Next
+			n = &left
 		}
-		t.Next = n
+		t.Next = *n
+		*n = (*n).Next
 		t = t.Next
 		// At the end of this for-loop, t.Next ends up being nil
 		// because of the left/right list splitting.

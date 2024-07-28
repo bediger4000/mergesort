@@ -82,7 +82,7 @@ func main() {
 			if *useRecursiveSort {
 				nl = recursiveMergeSort(head)
 			} else {
-				nl = mergesort2(head)
+				nl = mergesort(head)
 			}
 			elapsed := time.Since(before)
 			total += elapsed
@@ -252,92 +252,6 @@ func mergesort(head *Node) *Node {
 
 			for ; qsize > 0 && q != nil; qsize-- {
 				appnd(q)
-				q = q.Next
-			}
-
-			p = q
-
-			mergecount++
-		}
-
-		p = hd
-		head = hd
-
-		hd = nil
-		tl.Next = nil
-		tl = nil
-	}
-
-	return head
-}
-
-func mergesort2(head *Node) *Node {
-	var hd, tl *Node
-	p := head
-	mergecount := 2 // just to pass the first for-test
-
-	// The final pass over the unsorted linked list merges
-	// two lists each of about half the number of nodes.
-	// mergecount will have value 1 in that case. Don't
-	// need to loop again.
-	for k := 1; mergecount > 1; k *= 2 {
-
-		mergecount = 0
-
-		for p != nil {
-
-			psize := 0
-			q := p
-			for i := 0; q != nil && i < k; i++ {
-				psize++
-				q = q.Next
-			}
-
-			qsize := psize
-
-			for psize > 0 && qsize > 0 && q != nil {
-				if p.Data < q.Data {
-					if hd == nil {
-						hd = p
-						tl = p
-					} else {
-						tl.Next = p
-						tl = p
-					}
-					p = p.Next
-					psize--
-					continue
-				}
-				if hd == nil {
-					hd = q
-					tl = q
-				} else {
-					tl.Next = q
-					tl = q
-				}
-				q = q.Next
-				qsize--
-			}
-
-			for ; psize > 0 && p != nil; psize-- {
-				if hd == nil {
-					hd = p
-					tl = p
-				} else {
-					tl.Next = p
-					tl = p
-				}
-				p = p.Next
-			}
-
-			for ; qsize > 0 && q != nil; qsize-- {
-				if hd == nil {
-					hd = q
-					tl = q
-				} else {
-					tl.Next = q
-					tl = q
-				}
 				q = q.Next
 			}
 

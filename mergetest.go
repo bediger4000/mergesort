@@ -22,6 +22,7 @@ type Node struct {
 func main() {
 	useCryptoRand := flag.Bool("c", false, "use cryptographic PRNG")
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
+	useBottomUp := flag.Bool("B", false, "bottom-up mergesort with lists")
 	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
 	alreadySorted := flag.Bool("s", false, "already sorted list")
 	addressOrderedList := flag.Bool("m", false, "create address-ordered list for each sort")
@@ -31,7 +32,9 @@ func main() {
 	flag.Parse()
 
 	rand.Seed(time.Now().UnixNano() | int64(os.Getpid()))
-
+	if *useRecursiveSort && *useRecursiveSort {
+		log.Fatalf("only one of -r and -B allowed\n")
+	}
 	hostname, _ := os.Hostname() // not going to fail
 	fmt.Printf("# %s on %s\n", time.Now().Format(time.RFC3339), hostname)
 	fmt.Printf("# Start at %d nodes, end before %d nodes, increment %d\n",
@@ -39,6 +42,8 @@ func main() {
 	sortType := "iterative"
 	if *useRecursiveSort {
 		sortType = "recursive"
+	} else if *useBottomUp {
+		sortType = "bottom-up iterative"
 	}
 	fmt.Printf("# %s sort\n", sortType)
 	listType := "idomatic"
@@ -54,6 +59,7 @@ func main() {
 		randomType = "cryptographic"
 	}
 	fmt.Printf("# %s random numbers as list node values\n", randomType)
+	fmt.Printf("# nodes %d bytes in size\n", unsafe.Sizeof(Node{}))
 
 	var listCreation func(int, bool) *Node
 	listCreation = randomValueList
@@ -79,9 +85,12 @@ func main() {
 
 			var nl *Node
 			before := time.Now()
-			if *useRecursiveSort {
+			switch {
+			case *useRecursiveSort:
 				nl = recursiveMergeSort(head)
-			} else {
+			case *useBottomUp:
+				nl = buMergesort(head)
+			default:
 				nl = mergesort(head)
 			}
 			elapsed := time.Since(before)
@@ -330,6 +339,78 @@ func recursiveMergeSort(head *Node) *Node {
 		// but if right is nil, can't assign nil to t.Next,
 		// because left was non-nil.
 		t.Next = right
+	}
+
+	return h
+}
+
+// buMergesort - transliteration of Wikipedia's "Bottom up implementation with lists",
+// https://en.wikipedia.org/wiki/Merge_sort#Bottom-up_implementation_using_lists
+func buMergesort(head *Node) *Node {
+	if head == nil {
+		return nil
+	}
+	// Can pass 1-length lists to the rest of the function,
+	// because array[0] is 2^0 or 1 in size
+
+	var array [32]*Node
+	var result, next *Node
+	var i int
+
+	result = head
+
+	for result != nil {
+		next = result.Next
+		result.Next = nil
+
+		for i = 0; (i < 32) && (array[i] != nil); i++ {
+			result = merge(array[i], result)
+			array[i] = nil
+		}
+		if i == 32 {
+			i--
+		}
+		array[i] = result
+		result = next
+	}
+
+	result = nil
+	for i = 0; i < 32; i++ {
+		result = merge(array[i], result)
+	}
+
+	return result
+}
+
+func merge(p *Node, q *Node) *Node {
+	if p == nil {
+		return q
+	}
+	if q == nil {
+		return p
+	}
+
+	x := &q
+	if p.Data < q.Data {
+		x = &p
+	}
+
+	h, t := *x, *x
+	*x = (*x).Next
+
+	for p != nil && q != nil {
+		n := &q
+		if p.Data < q.Data {
+			n = &p
+		}
+		t.Next = *n
+		*n = (*n).Next
+		t = t.Next
+	}
+
+	t.Next = p
+	if q != nil {
+		t.Next = q
 	}
 
 	return h

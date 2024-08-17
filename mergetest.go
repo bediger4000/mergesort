@@ -32,7 +32,7 @@ func main() {
 	flag.Parse()
 
 	rand.Seed(time.Now().UnixNano() | int64(os.Getpid()))
-	if *useRecursiveSort && *useRecursiveSort {
+	if *useRecursiveSort && *useBottomUp {
 		log.Fatalf("only one of -r and -B allowed\n")
 	}
 	hostname, _ := os.Hostname() // not going to fail
@@ -282,7 +282,7 @@ func mergesort(head *Node) *Node {
 
 func recursiveMergeSort(head *Node) *Node {
 	if head.Next == nil {
-		// single node list is sorted by definiton
+		// single node list is sorted by definition
 		return head
 	}
 

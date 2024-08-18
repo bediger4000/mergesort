@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"runtime"
 	"time"
 	"unsafe"
 )
@@ -26,6 +27,7 @@ func main() {
 	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
 	alreadySorted := flag.Bool("s", false, "already sorted list")
 	addressOrderedList := flag.Bool("m", false, "create address-ordered list for each sort")
+	garbageCollectAfter := flag.Bool("G", false, "collect garbage after each sort")
 	countIncrement := flag.Int("i", 200000, "increment of list size")
 	countBegin := flag.Int("b", 1000, "beginning list size")
 	countUntil := flag.Int("u", 18000000, "sort lists up to this size")
@@ -54,6 +56,9 @@ func main() {
 	if *reuseList {
 		fmt.Println("# re-random-value and re-use list")
 	}
+	if *garbageCollectAfter {
+		fmt.Println("# garbage collect after each sort iteration")
+	}
 	randomType := "math/rand"
 	if *useCryptoRand {
 		randomType = "cryptographic"
@@ -78,6 +83,7 @@ func main() {
 			head = listCreation(n, *useCryptoRand)
 		}
 		for i := 0; i < 10; i++ {
+			beforeIteration := time.Now()
 			if !*reuseList {
 				// fresh, new list every iteration
 				head = listCreation(n, *useCryptoRand)
@@ -107,7 +113,13 @@ func main() {
 			if *reuseList {
 				head = rerandomizeList(nl, *useCryptoRand)
 			}
-			elapsed = time.Since(before)
+
+			if *garbageCollectAfter {
+				head = nil
+				nl = nil
+				runtime.GC()
+			}
+			elapsed = time.Since(beforeIteration)
 			looping += elapsed
 		}
 		total /= 10.0

@@ -25,7 +25,8 @@ func main() {
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
 	useBottomUp := flag.Bool("B", false, "bottom-up mergesort with lists")
 	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
-	alreadySorted := flag.Bool("s", false, "already sorted list")
+	alreadySorted := flag.Bool("s", false, "already sorted low-to-high list")
+	reverseSorted := flag.Bool("S", false, "reverse sorted high-to-low list")
 	addressOrderedList := flag.Bool("m", false, "create address-ordered list for each sort")
 	garbageCollectAfter := flag.Bool("G", false, "collect garbage after each sort")
 	countIncrement := flag.Int("i", 200000, "increment of list size")
@@ -52,7 +53,7 @@ func main() {
 	if *addressOrderedList {
 		listType = "memory address"
 	}
-	fmt.Printf("# %s list ordering\n", listType)
+	fmt.Printf("# %s list in-memory ordering\n", listType)
 	if *reuseList {
 		fmt.Println("# re-random-value and re-use list")
 	}
@@ -68,12 +69,21 @@ func main() {
 
 	var listCreation func(int, bool) *Node
 	listCreation = randomValueList
+	listCreationPhrase := "randomly chosen data"
 	if *addressOrderedList {
 		listCreation = memoryOrderedList
+		listCreationPhrase = "unordered"
+		fmt.Printf("# node addresses ascending in memory\n")
 	}
 	if *alreadySorted {
 		listCreation = presortedList
+		listCreationPhrase = "presorted"
 	}
+	if *reverseSorted {
+		listCreation = reverseSortedList
+		listCreationPhrase = "revese sorted"
+	}
+	fmt.Printf("# %s data values\n", listCreationPhrase)
 
 	for n := *countBegin; n < *countUntil; n += *countIncrement {
 		var total time.Duration
@@ -164,6 +174,20 @@ func randomValueList(n int, useCheapRand bool) *Node {
 }
 
 func presortedList(n int, _ bool) *Node {
+
+	var head *Node
+
+	for i := n - 1; i >= 0; i-- {
+		head = &Node{
+			Data: uint(i),
+			Next: head,
+		}
+	}
+
+	return head
+}
+
+func reverseSortedList(n int, _ bool) *Node {
 
 	var head *Node
 
@@ -426,4 +450,12 @@ func merge(p *Node, q *Node) *Node {
 	}
 
 	return h
+}
+
+// Print runs a linked list and prints its values on stdout
+func Print(list *Node) {
+	for node := list; node != nil; node = node.Next {
+		fmt.Printf("%d -> ", node.Data)
+	}
+	fmt.Println()
 }

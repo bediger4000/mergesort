@@ -23,6 +23,7 @@ type Node struct {
 func main() {
 	useCryptoRand := flag.Bool("c", false, "use cryptographic PRNG")
 	useRecursiveSort := flag.Bool("r", false, "use purely recursive mergesort")
+	useRecursiveSort2 := flag.Bool("z", false, "use purely recursive mergesort with user stack")
 	useBottomUp := flag.Bool("B", false, "bottom-up mergesort with lists")
 	reuseList := flag.Bool("R", false, "re-randomize and re-use list")
 	alreadySorted := flag.Bool("s", false, "already sorted low-to-high list")
@@ -47,6 +48,8 @@ func main() {
 		sortType = "recursive"
 	} else if *useBottomUp {
 		sortType = "bottom-up iterative"
+	} else if *useRecursiveSort2 {
+		sortType = "recursive with user-level stack"
 	}
 	fmt.Printf("# %s sort\n", sortType)
 	listType := "idomatic"
@@ -81,7 +84,7 @@ func main() {
 	}
 	if *reverseSorted {
 		listCreation = reverseSortedList
-		listCreationPhrase = "revese sorted"
+		listCreationPhrase = "reverse sorted"
 	}
 	fmt.Printf("# %s data values\n", listCreationPhrase)
 
@@ -92,6 +95,8 @@ func main() {
 		if *reuseList {
 			head = listCreation(n, *useCryptoRand)
 		}
+		min := time.Duration((365 * 24 * 3600) * time.Second)
+		max := time.Duration(0)
 		for i := 0; i < 10; i++ {
 			beforeIteration := time.Now()
 			if !*reuseList {
@@ -104,6 +109,8 @@ func main() {
 			switch {
 			case *useRecursiveSort:
 				nl = recursiveMergeSort(head)
+			case *useRecursiveSort2:
+				nl = ownstackMergeSort(head)
 			case *useBottomUp:
 				nl = buMergesort(head)
 			default:
@@ -111,6 +118,12 @@ func main() {
 			}
 			elapsed := time.Since(before)
 			total += elapsed
+			if elapsed > max {
+				max = elapsed
+			}
+			if elapsed < min {
+				min = elapsed
+			}
 
 			if sz, sorted := isSorted(nl); !sorted {
 				log.Printf("list of size %d not sorted at element %d\n", n, sz)
@@ -133,7 +146,7 @@ func main() {
 			looping += elapsed
 		}
 		total /= 10.0
-		fmt.Printf("%d\t%.04f\t%.04f\n", n, total.Seconds(), looping.Seconds())
+		fmt.Printf("%d\t%.04f\t%.04f\t%.04f\t%.04f\n", n, total.Seconds(), looping.Seconds(), min.Seconds(), max.Seconds())
 	}
 
 	fmt.Printf("# ending at %s on %s\n", time.Now().Format(time.RFC3339), hostname)
@@ -378,6 +391,88 @@ func recursiveMergeSort(head *Node) *Node {
 	}
 
 	return h
+}
+
+type stackFrame struct {
+	list   *Node
+	merged *Node
+	next   *stackFrame
+}
+
+func split(head *Node) (*Node, *Node) {
+	// Setting rabbit and turtle like this means we split an
+	// odd-length-list (head) into lists of length n (right)
+	// and n+1 (left).
+	rabbit, turtle := head.Next, &head
+	for rabbit != nil {
+		turtle = &(*turtle).Next
+		if rabbit = rabbit.Next; rabbit != nil {
+			rabbit = rabbit.Next
+		}
+	}
+	right := *turtle
+	*turtle = nil
+	return head, right
+}
+
+func ownstackMergeSort(head *Node) *Node {
+
+	stack := &stackFrame{
+		list: head,
+	}
+
+	var sorted *Node
+
+	for {
+		var elem *stackFrame
+
+		elem, stack = stack, stack.next
+
+		if elem.list == nil && stack == nil {
+			sorted = elem.merged
+			break
+		}
+
+		if elem.list != nil && elem.list.Next == nil {
+			// "recursion" has bottomed out at 1-node list
+			elem.merged, elem.list = elem.list, nil
+			elem.next, stack = stack, elem
+			continue
+		}
+
+		if elem.merged != nil {
+			// a merged sublist has "returned"
+
+			tmp := stack
+			stack = stack.next
+
+			if tmp.merged == nil {
+				elem.next, stack = stack, elem
+				tmp.next, stack = stack, tmp
+				continue
+			}
+
+			// both tmp and elem contain merged sublists
+
+			elem.merged = merge(elem.merged, tmp.merged)
+			elem.next, stack = stack, elem
+			// discarding tmp
+			continue
+		}
+
+		// still "recursing"
+		left, right := split(elem.list)
+		stack = &stackFrame{
+			list: left,
+			next: stack,
+		}
+		stack = &stackFrame{
+			list: right,
+			next: stack,
+		}
+	}
+
+	return sorted
 }
 
 // buMergesort - transliteration of Wikipedia's "Bottom up implementation with lists",

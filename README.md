@@ -80,3 +80,36 @@ whatever option (default, `-m`) the first of 10 sorts.
 For the other 9 sortings, the code runs the sorted linked list
 by `.Next` pointer and assigned random numerical values to the
 nodes' `.Data` fields.
+
+## Output
+
+`mergetest` produces output that is easy to use in `gnuplot`.
+Typical output looks like this:
+
+```
+# 2024-09-29T21:48:14-06:00 on modest
+# Start at 1000 nodes, end before 18000000 nodes, increment 40000
+# recursive sort
+# idomatic list in-memory ordering
+# math/rand random numbers as list node values
+# nodes 16 bytes in size
+# randomly chosen data data values
+1000    0.0002  0.0324  0.0001  0.0002
+41000   0.0100  1.2179  0.0098  0.0103
+81000   0.0237  2.4883  0.0216  0.0294
+121000  0.0424  3.9718  0.0369  0.0562
+...
+17881000    23.4298 780.2499    23.1556 23.6560
+17921000    23.8185 786.3332    22.9558 24.1528
+17961000    23.6769 788.9641    23.0547 24.2352
+# ending at 2024-10-01T21:08:12-06:00 on modest
+```
+
+Comment/provenance lines begin with '#'.
+Data lines are all others, each consisting of 5, tab-separated, numerical values.
+
+1. Linked list length, number of nodes
+2. Arithmetic mean of 10 sorts of linked lists of that length, seconds
+3. Total elapsed time, included list set up, for those 10 sorts, seconds
+4. Minimum elapsed time of the 10 sorts, seconds
+5. Maximum elapsed time of the 10 sorts, seconds

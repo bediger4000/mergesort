@@ -3,8 +3,12 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <string.h>
+#include <sys/utsname.h>
+#include <time.h>
 
 float elapsed_time(struct timeval before, struct timeval after);
+char *hostname(void);
+char *time_stamp(void);
 
 struct Node {
 	int Data;
@@ -34,22 +38,42 @@ main(int ac, char **av)
 	int c, n;
 	float total = 0.0;
 	struct timeval tv;
+	int count_begin = 1000;
+	int count_until = 18000000;
+	int increment = 200000;
+	char *hn = hostname();
 
 	gettimeofday(&tv, NULL);
 	srandom(tv.tv_usec | getpid());
 
-    while (EOF != (c = getopt(ac, av, "p")))
+    while (EOF != (c = getopt(ac, av, "b:i:pu:")))
     {
         switch (c)
         {
+		case 'b':
+			count_begin = atoi(optarg);
+			break;
+		case 'i':
+			increment = atoi(optarg);
+			break;
         case 'p':
 			preallocated = 1;
+			break;
+        case 'u':
+			count_until = atoi(optarg);
+			break;
 		}
 	}
 
+	printf("# %s on %s\n", time_stamp(), hn);
+	printf("# Start at %d nodes, end before %d nodes, increment %d\n",
+		count_begin, count_until, increment);
 
-	for (n = 10000; n < 8000000; n += 200000) {
+	for (n = count_begin; n < count_until; n += increment) {
 		int i;
+
+		float max = -1.0;
+		float min = 1.0E9;
 
 		if (preallocated) {
 			perform_preallocation(n);
@@ -57,6 +81,7 @@ main(int ac, char **av)
 
 		for (i = 0; i < 11; i++) {
 			struct timeval before, after;
+			float et;
 
 			struct Node *nl, *head = randomValueList(n);
 
@@ -69,7 +94,10 @@ main(int ac, char **av)
 					fprintf(stderr, "n %d, i %d, final list not sorted\n", n, i);
 				}
 				/* Don't time first sort, warm the cache */
-				total += elapsed_time(before, after);
+				et = elapsed_time(before, after);
+				if (et > max) { max = et; }
+				if (et < min) { min = et; }
+				total += et;
 			}
 
 			/*
@@ -87,9 +115,13 @@ main(int ac, char **av)
 		}
 
 		total /= 10.;
-		printf("%d\t%.04f\n", n, total);
+		printf("%d\t%.04f\t%.04f\t%.04f\n", n, total, min, max);
 		fflush(stdout);
 	}
+
+	printf("# ending at %s on %s\n", time_stamp(), hn);
+
+	return 0;
 }
 
 int
@@ -278,4 +310,33 @@ perform_preallocation(int node_count)
 	next_node_index = 0;
 
 	arrayallocation = calloc(preallocated_node_count, sizeof(struct Node));
+}
+
+struct utsname ubuf;
+
+char *
+hostname(void)
+{
+	if (uname(&ubuf) < 0) {
+		return NULL;
+	}
+	return ubuf.nodename;
+}
+
+char time_buf[256];
+
+char *
+time_stamp(void) {
+    time_t t;
+    struct tm *tmp;
+
+    t = time(NULL);
+    tmp = localtime(&t);
+
+    strftime(time_buf, sizeof(time_buf),
+        "%FT%H:%M:%S%z",
+        tmp
+    );
+
+	return time_buf;
 }

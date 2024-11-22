@@ -113,3 +113,41 @@ Data lines are all others, each consisting of 5, tab-separated, numerical values
 3. Total elapsed time, included list set up, for those 10 sorts, seconds
 4. Minimum elapsed time of the 10 sorts, seconds
 5. Maximum elapsed time of the 10 sorts, seconds
+
+## Check the order in which two algorithms access memory
+
+`mergeaddresses.go` sorts the same list with recursive and
+wikipedia's bottom up algorithm,
+displaying merging lists' lengths and addresses of head nodes.
+
+```
+$ go build mergeaddresses.go
+$ ./mergeaddresses -b 8
+# 2024-11-21T21:42:36-07:00 on hazard
+# List of 8 nodes
+# nodes 24 bytes in size
+# recursive sort
+# 5 -> 0 -> 0 -> 7 -> 1 -> 0 -> 6 -> 1 -> 
+
+merging <1,1> (0xc0001160a8, 0xc000116090)
+merging <1,1> (0xc000116078, 0xc000116060)
+merging <2,2> (0xc000116090, 0xc000116078)
+merging <1,1> (0xc000116048, 0xc000116030)
+merging <1,1> (0xc000116018, 0xc000116000)
+merging <2,2> (0xc000116030, 0xc000116000)
+merging <4,4> (0xc000116078, 0xc000116030)
+# bottom up sort
+# 5 -> 0 -> 0 -> 7 -> 1 -> 0 -> 6 -> 1 -> 
+
+merging <1,1> (0xc0001160a8, 0xc000116090)
+merging <1,1> (0xc000116078, 0xc000116060)
+merging <2,2> (0xc000116090, 0xc000116078)
+merging <1,1> (0xc000116048, 0xc000116030)
+merging <1,1> (0xc000116018, 0xc000116000)
+merging <2,2> (0xc000116030, 0xc000116000)
+merging <4,4> (0xc000116078, 0xc000116030)
+# ending at 2024-11-21T21:42:36-07:00 on hazard
+```
+
+These two algorithms read and write list nodes
+in the same order when sorting.

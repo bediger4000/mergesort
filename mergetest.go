@@ -68,7 +68,7 @@ func main() {
 		randomType = "cryptographic"
 	}
 	fmt.Printf("# %s random numbers as list node values\n", randomType)
-	fmt.Printf("# nodes %d bytes in size\n", unsafe.Sizeof(Node{}))
+	fmt.Printf("# nodes %d bytes in size, alignment %d\n", unsafe.Sizeof(Node{}), unsafe.Alignof(Node{}))
 
 	var listCreation func(int, bool) *Node
 	listCreation = randomValueList

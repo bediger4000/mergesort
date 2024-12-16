@@ -50,6 +50,7 @@ func main() {
 	Print(head)
 	fmt.Println()
 	nl = recursiveMergeSort(head)
+	fmt.Printf("# %d comparisons during recursive merge sort of %d length list\n", recursiveComparisonCount, *countBegin)
 	checkSorted(nl, *countBegin, "first")
 	sz = resetList(head)
 	if sz != *countBegin {
@@ -60,6 +61,7 @@ func main() {
 	Print(head)
 	fmt.Println()
 	nl = buMergesort(head)
+	fmt.Printf("# %d comparisons during bottom up merge sort of %d length list\n", buComparisonCount, *countBegin)
 	checkSorted(nl, *countBegin, "second")
 
 	fmt.Printf("# ending at %s on %s\n", time.Now().Format(time.RFC3339), hostname)
@@ -126,6 +128,8 @@ func randomValueList(n int, max int) *Node {
 	return head
 }
 
+var recursiveComparisonCount int
+
 func recursiveMergeSort(head *Node) *Node {
 	if head.Next == nil {
 		// single node list is sorted by definition
@@ -161,6 +165,7 @@ func recursiveMergeSort(head *Node) *Node {
 	// Set h, t variables so that the loop doing the merge
 	// does not have to have a "if h == nil" check every iteration.
 	x := &right
+	recursiveComparisonCount++
 	if left.Data < right.Data {
 		x = &left
 	}
@@ -173,6 +178,7 @@ func recursiveMergeSort(head *Node) *Node {
 	// than the other. Have to check both for nil.
 	for left != nil && right != nil {
 		n := &right
+		recursiveComparisonCount++
 		if left.Data < right.Data {
 			n = &left
 		}
@@ -195,28 +201,6 @@ func recursiveMergeSort(head *Node) *Node {
 	return h
 }
 
-type stackFrame struct {
-	list   *Node
-	merged *Node
-	next   *stackFrame
-}
-
-func split(head *Node) (*Node, *Node) {
-	// Setting rabbit and turtle like this means we split an
-	// odd-length-list (head) into lists of length n (right)
-	// and n+1 (left).
-	rabbit, turtle := head.Next, &head
-	for rabbit != nil {
-		turtle = &(*turtle).Next
-		if rabbit = rabbit.Next; rabbit != nil {
-			rabbit = rabbit.Next
-		}
-	}
-	right := *turtle
-	*turtle = nil
-	return head, right
-}
-
 func merge(p *Node, q *Node) *Node {
 	if p == nil {
 		return q
@@ -226,6 +210,7 @@ func merge(p *Node, q *Node) *Node {
 	}
 
 	x := &q
+	buComparisonCount++
 	if p.Data < q.Data {
 		x = &p
 	}
@@ -235,6 +220,7 @@ func merge(p *Node, q *Node) *Node {
 
 	for p != nil && q != nil {
 		n := &q
+		buComparisonCount++
 		if p.Data < q.Data {
 			n = &p
 		}
@@ -258,6 +244,8 @@ func Print(list *Node) {
 	}
 	fmt.Println()
 }
+
+var buComparisonCount int
 
 // buMergesort - transliteration of Wikipedia's "Bottom up implementation with lists",
 // https://en.wikipedia.org/wiki/Merge_sort#Bottom-up_implementation_using_lists
@@ -294,6 +282,13 @@ func buMergesort(head *Node) *Node {
 
 	result = nil
 	for i = 0; i < 32; i++ {
+		resultLength, _ := isSorted(result)
+		iLength, _ := isSorted(array[i])
+		phrase := "nil"
+		if array[i] != nil {
+			phrase = "non-nil"
+		}
+		fmt.Printf("%d %s, merging <%d,%d> (%p, %p)\n", i, phrase, resultLength, iLength, array[i], result)
 		result = merge(array[i], result)
 	}
 

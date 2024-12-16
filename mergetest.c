@@ -100,18 +100,7 @@ main(int ac, char **av)
 				total += et;
 			}
 
-			/*
-			printf("n %d, i %d\n", n, i);
-			printf("before free list count %d\n", free_list_count);
-			printf("Malloced node count %d\n", malloced_nodes);
-			fflush(stdout);
-			*/
 			free_list(nl);
-			/*
-			printf("after  free list count %d\n", free_list_count);
-			printf("Malloced node count %d\n", malloced_nodes);
-			fflush(stdout);
-			*/
 		}
 
 		total /= 10.;

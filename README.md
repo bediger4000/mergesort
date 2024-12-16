@@ -151,3 +151,93 @@ merging <4,4> (0xc000116078, 0xc000116030)
 
 These two algorithms read and write list nodes
 in the same order when sorting.
+
+## Recursive mergesort algorithm variations
+
+```
+$ go build recursivetest.go
+
+Usage of ./recursivetest:
+  -G    collect garbage after each sort
+  -R    re-randomize and re-use list
+  -S    reverse sorted high-to-low list
+  -a    use purely recursive alternating mergesort
+  -b int
+        beginning list size (default 1000)
+  -c    use cryptographic PRNG
+  -d    use purely recursive mergesort, rhs first
+  -e    use counted purely recursive mergesort
+  -f    recursive mergesort with merge function
+  -i int
+        increment of list size (default 200000)
+  -m    create address-ordered list for each sort
+  -o    recursive mergesort with user stack 2
+  -p    recursive mergesort with user stack 3
+  -r    use purely recursive mergesort
+  -s    already sorted low-to-high list
+  -u int
+        sort lists up to this size (default 18000000)
+  -z    use purely recursive mergesort with user stack
+```
+
+The major variations are:
+
+* -a  recursive list sort, recursion alternating left and right lists
+* -d  recursive list sort from end of list instead of head
+* -e  counted list splits instead of walking the formal argument list
+* -f  list merges in a function, rather than in-line
+* -o  userland simulated call stack allocated on the function call stack
+* -p  userland simulated call stack allocated on the process heap
+
+## Mergesort comparison counting
+
+```
+$ go build cmpcounter2.go 
+
+Usage of ./cmpcounter2:
+  -I int
+        number of sorts conducted at any given list length (default 10)
+  -S    reverse sorted high-to-low list
+  -b int
+        beginning list size (default 1000)
+  -i int
+        increment of list size (default 200000)
+  -s    already sorted low-to-high list
+  -u int
+        sort lists up to this size (default 18000000)
+```
+
+Counts the number of `if left.data < right.data` comparisons done to sort a list.
+Output is a little different:
+
+```
+# 2024-12-15T18:15:32-07:00 on hazard
+# Start at 1000 nodes, end before 18000000 nodes, increment 200000
+# 10 iterations of a given list length
+# idiomatic list in-memory ordering
+# math/rand random numbers as list node values
+# nodes 24 bytes in size
+# randomly chosen data data values
+1000    8715    8727    8727
+201000  3290622 3349706 3349706
+...
+```
+
+Four columns of output:
+
+1. List length in nodes
+2. Mean count of comparisons, 10 iterations on the list length, recursive algorithm
+3. Mean count of comparisons, 10 iterations on the list length, wikipedia bottom up algorithm
+4. Mean count of comparisons, 10 iterations on the list length, July 2021 iterative algorithm
+
+After each sort, the list data is reset,
+so randomly-chosen data value lists are the same for each algorithm.
+It's not strictly necessary to do 10 iterations on presorted data lists.
+
+You can use
+
+* randomly-chosen data, which can cause more or less comparisons in a sort
+* presorted data
+* presorted, reverse ordered, data
+
+Presorted data (both kinds) should have the same number of comparisons every time.
